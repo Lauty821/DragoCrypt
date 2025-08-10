@@ -7,6 +7,7 @@ Su objetivo es ofrecer protección y trazabilidad de contenido de forma discreta
 ## ✨ Características principales
 - 🎯 **Marcar archivos**: Inserta marcas ocultas únicas por comprador, sin alterar la usabilidad del archivo.
 - 🔍 **Revisar marcas**: Detecta y verifica marcas previamente insertadas.
+- ❌ **Eliminar marcas**: Permite eliminar las marcas de los archivos.
 - 🧑‍💼 **Registro de usuarios**: Control de compradores y asignación de marcas.
 - ⚙️ **Configuración avanzada**: Personaliza la apariencia y el comportamiento del programa.
 - 🌗 **Modos de tema**: Oscuro, claro y sistema, seleccionables en tiempo real.
