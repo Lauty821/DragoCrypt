@@ -1,45 +1,71 @@
-# Acá importo las librerias.
-import customtkinter as ctk   # Versión moderna y personalizable de Tkinter.
-import sys                    # Permite cerrar el programa correctamente.
-from PIL import Image         # Librería para manejar imágenes (Pillow).
+import customtkinter as ctk
+import sys
+from PIL import Image
+
+# Acá intentamos importar la pantalla de marcar archivos.
+try:
+    from marcar_archivos import mostrar_marcar_archivos  # Acá importamos la pantalla de marcar_archivos.py.
+except Exception as e:
+    print("Error al importar marcar_archivos:", e)  # Esto me dira si hay algún error al importar marcar_archivos.py.
+    sys.exit(1)
+
 
 # Esta es la configuración global.
-ctk.set_appearance_mode("Dark")         # Esto establece el modo visual inicial (Oscuro / Calro / Sistema)
-ctk.set_default_color_theme("dark-blue") # Esto cambia la paleta de colores por defecto.
+ctk.set_appearance_mode("Dark")
+ctk.set_default_color_theme("dark-blue")
 
-# Acá se crea la ventana principal.
-app = ctk.CTk()  # Esto crea la ventana principal de la aplicación.
-app.iconbitmap(r"C:\Users\LENOVO\Desktop\DragoCrypt\img\icono.ico")  # Este es el icono que se verá en la barra de título.
-app.title("DragoCrypt")       # Este es el texto que aparece en la barra superior de la ventana.
-app.geometry("600x600")       # Este es el tamaño inicial de la ventana (ancho x alto en píxeles).
-app.resizable(False, False)   # Esto evita que el usuario cambie el tamaño de la ventana.
+app = ctk.CTk()
+app.iconbitmap(r"C:\Users\LENOVO\Desktop\DragoCrypt\img\icono.ico")
+app.title("DragoCrypt")
+app.geometry("600x600")
+app.resizable(False, False)
 
-# Estos son las duentes personalizadas.
-TITULO_FONT = ctk.CTkFont(size=30, weight="bold")  # Fuente grande para títulos.
-BOTON_FONT = ctk.CTkFont(size=16)                  # Fuente mediana para botones.
+TITULO_FONT = ctk.CTkFont(size=30, weight="bold")
+BOTON_FONT = ctk.CTkFont(size=16)
 
-# Este es el scrollable flame principal.
-# Es un contenedor que permite desplazarse si hay muchos elementos.
-# El scroll_frame es la barra que permite desplazarse de arriba hacia abajo en el programa.
+# ---------------------------
+# Scroll Frame principal
+# ---------------------------
 scroll_frame = ctk.CTkScrollableFrame(app, width=200, height=200)
 scroll_frame.pack(fill="both", expand=True, pady=10, padx=10)
 
-# Esto es el logo que aparece en el programa.
-# Esto carga la imagen para modo oscuro (también puede tener una versión para modo claro.)
 imagen_logo = ctk.CTkImage(
-    dark_image=Image.open(r"C:\Users\LENOVO\Desktop\DragoCrypt\img\icono.png"), # Esta es la imagen PNG que aparece como logo en el programa.
-    size=(220, 220)  # Este es el tamaño de la imagen en píxeles.
+    dark_image=Image.open(r"C:\Users\LENOVO\Desktop\DragoCrypt\img\icono.png"),
+    size=(220, 220)
 )
 
-# Esto coloca la imagen como un label (sin texto.)
 titulo = ctk.CTkLabel(scroll_frame, image=imagen_logo, text="")
 titulo.pack(pady=20)
 
+# ---------------------------
+# Funciones
+# ---------------------------
+def limpiar_contenedor(contenedor):
+    for widget in contenedor.winfo_children():
+        widget.pack_forget()
 
+def mostrar_menu():
+    limpiar_contenedor(scroll_frame)
 
-# Estas son las funciones de cada botón.
+    titulo = ctk.CTkLabel(scroll_frame, image=imagen_logo, text="")
+    titulo.pack(pady=20)
+
+    for texto, accion, icono in botones:
+        boton = ctk.CTkButton(
+            scroll_frame,
+            text=texto,
+            image=icono,
+            compound="left",
+            command=accion,
+            width=280,
+            height=50,
+            font=BOTON_FONT
+        )
+        boton.pack(pady=12)
+
+# Funciones de botones
 def marcar_archivos():
-    print("→ Abrir ventana para marcar archivos")  # Aquí se pondrá la función real
+    mostrar_marcar_archivos(scroll_frame, mostrar_menu, BOTON_FONT)
 
 def revisar_marcas():
     print("→ Revisar marcas invisibles")
@@ -54,26 +80,24 @@ def configuracion():
     print("→ Ajustes del sistema")
 
 def salir():
-    app.destroy()  # Esto es lo que cierra la ventana.
-    sys.exit()     # Esto finaliza el programa completamente.
+    app.destroy()
+    sys.exit()
 
-
-
-# Este es el mapeo de los modos de apariencia.
-# Esto es como un diccionario donde se usan nombres en español, pero internamente CTk necesita inglés.
+# ---------------------------
+# Selector de apariencia
+# ---------------------------
 modo_map = {
     "Oscuro": "Dark",
     "Claro": "Light",
     "Sistema": "System"
 }
 
-# Esta función cambia el modo visual dependiendo de la opción elegida.
 def cambiar_apariencia(opcion):
     ctk.set_appearance_mode(modo_map[opcion])
 
-
-
-# Esto carga los iconos de los botones.
+# ---------------------------
+# Iconos de botones
+# ---------------------------
 icono_marcar = ctk.CTkImage(Image.open(r"C:\Users\LENOVO\Desktop\DragoCrypt\img\marcar.png"), size=(30, 30))
 icono_revisar = ctk.CTkImage(Image.open(r"C:\Users\LENOVO\Desktop\DragoCrypt\img\revisar.png"), size=(30, 30))
 icono_eliminar = ctk.CTkImage(Image.open(r"C:\Users\LENOVO\Desktop\DragoCrypt\img\eliminar.png"), size=(30, 30))
@@ -81,7 +105,9 @@ icono_registro = ctk.CTkImage(Image.open(r"C:\Users\LENOVO\Desktop\DragoCrypt\im
 icono_config = ctk.CTkImage(Image.open(r"C:\Users\LENOVO\Desktop\DragoCrypt\img\config.png"), size=(30, 30))
 icono_salir = ctk.CTkImage(Image.open(r"C:\Users\LENOVO\Desktop\DragoCrypt\img\salir.png"), size=(30, 30))
 
-# Estos son los botones principales.
+# ---------------------------
+# Botones principales
+# ---------------------------
 botones = [
     ("Marcar archivos", marcar_archivos, icono_marcar),
     ("Revisar marcas", revisar_marcas, icono_revisar),
@@ -91,35 +117,29 @@ botones = [
     ("Salir", salir, icono_salir)
 ]
 
+# Mostrar menú inicial
+mostrar_menu()
 
-
-# Esto crea y coloca cada botón dentro del scroll_frame.
-for texto, accion, icono in botones:
-    boton = ctk.CTkButton(
-        scroll_frame,         # Este es el contenedor donde irá.
-        text=texto,           # Este es el texto que se muestra.
-        image=icono,          # Estos son los iconos PNG (CTkImage.)
-        compound="left",      # Esto coloca las imagenes en cierta posición, en este caso esta a la izquierda.
-        command=accion,       # Esta es la unción que ejecutará.
-        width=280,            # Este es el ancho de los botones.
-        height=50,            # Este es el alto de los botones.
-        font=BOTON_FONT       # Esta es la fuente personalizada.
-    )
-    boton.pack(pady=12)       # Este es el espaciado entre los botones.
-
-# Este es el selector de apariencia.
-# Este es el texto que explica el menú.
+# ---------------------------
+# Selector de tema
+# ---------------------------
 etiqueta_tema = ctk.CTkLabel(app, text="Modo de apariencia:", font=("Arial", 14))
 etiqueta_tema.pack(pady=(5, 0))
 
-# Ete es el menú desplegable para elegir el modo de apariencia.
 selector_tema = ctk.CTkOptionMenu(
-    app,                       # Este es el contenedor.
-    values=list(modo_map.keys()),  # Estas son las pciones visibles (en español.)
-    command=cambiar_apariencia    # Esta es la función que se ejecuta al cambiar de apariencia.
+    app,
+    values=list(modo_map.keys()),
+    command=cambiar_apariencia
 )
-selector_tema.set("Oscuro")    # Este es el valor inicial.
+selector_tema.set("Oscuro")
 selector_tema.pack(pady=(0, 10))
 
-# Esto es lo que inicia la ventana del programa.
-app.mainloop()  # Etse es el bucle principal que mantiene la ventana abierta.
+# ---------------------------
+# Mensaje para confirmar que llegó hasta aquí
+# ---------------------------
+print("Inicializando la ventana de DragoCrypt...")
+
+# ---------------------------
+# Iniciar aplicación
+# ---------------------------
+app.mainloop()
