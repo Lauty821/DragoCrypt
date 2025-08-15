@@ -1,180 +1,282 @@
-import customtkinter as ctk  # Esto importa la versión moderna de Tkinter con soporte para temas.
-from tkinter import filedialog  # Esto permite abrir cuadros de diálogo para seleccionar archivos o carpetas.
-import os  # Esto permite interactuar con el sistema de archivos (rutas, nombres de archivos, etc.)
+# Importa la biblioteca "customtkinter" y la renombra como "ctk"
+# CustomTkinter es una versión mejorada de Tkinter con soporte para temas, colores y widgets modernos.
+import customtkinter as ctk  
+
+# Importa desde tkinter el módulo "filedialog" para mostrar cuadros de diálogo
+# que permiten seleccionar archivos o carpetas en el sistema operativo.
+from tkinter import filedialog  
+
+# Importa la biblioteca estándar "os" para trabajar con rutas, nombres de archivos, carpetas y funciones del sistema operativo.
+import os  
 
 
-# Esta esta es la función marca un archivo.
+# ---------------------- FUNCIÓN PARA MARCAR UN ARCHIVO ----------------------
 def marcar(archivo, texto_marca):
     """
-    Esto abre un archivo en modo binario append y agrega el texto de la marca.
-    - archivo: ruta completa del archivo a marcar.
-    - texto_marca: string que se añadirá al final del archivo.
+    Abre un archivo en modo binario y añade al final un texto como "marca".
+    - archivo: ruta completa al archivo que se quiere modificar.
+    - texto_marca: texto que se agregará al final del archivo.
     """
-    
-    with open(archivo, "ab") as f:  # Esto lo abre en modo append binario.
-        f.write(texto_marca.encode("utf-8"))  # Acá escribimos la marca codificada en bytes.
+
+    # Abre el archivo indicado en modo "ab" (append binario).
+    # Esto significa que no borra lo que ya existe, solo añade al final en formato binario.
+    with open(archivo, "ab") as f:  
+        # Convierte el texto a bytes usando codificación UTF-8 para poder escribirlo en modo binario.
+        f.write(texto_marca.encode("utf-8"))  
 
 
 
-# Esta es la función para mostrar la pantalla de marcar archivos.
+# ---------------------- FUNCIÓN PARA MOSTRAR LA PANTALLA DE MARCAR ARCHIVOS ----------------------
 def mostrar_marcar_archivos(parent, volver_callback, boton_font):
     """
-    Esto construye toda la interfaz de marcar archivos dentro del contenedor 'parent'.
-    - parent: contenedor Tkinter donde se mostrará la interfaz.
-    - volver_callback: función a ejecutar al presionar el botón "Volver".
-    - boton_font: fuente para los botones.
+    Crea y muestra la interfaz gráfica para seleccionar y marcar archivos.
+    - parent: contenedor principal donde se colocarán los elementos gráficos.
+    - volver_callback: función que se ejecutará cuando se presione el botón "Volver".
+    - boton_font: tipo de fuente (familia, tamaño, estilo) que se usará en los botones.
     """
 
+    # Se vuelven a importar os y filedialog aquí por si se quiere usar esta función de forma independiente.
     import os
     from tkinter import filedialog
 
-    # Esto sirve para limpiar pantalla borrando cualquier widget previo.
+    # Recorre todos los widgets que ya existen dentro de "parent" y los oculta/borra de la pantalla.
     for widget in parent.winfo_children():
         widget.pack_forget()
 
 
-    # Este es el título de la pantalla.
-    titulo = ctk.CTkLabel(parent, text="Pantalla de Marcar Archivos", font=("Arial", 20, "bold"))
+
+    # ---------------------- TÍTULO ----------------------
+    # Crea un texto grande en la parte superior que indica el nombre de la pantalla.
+    titulo = ctk.CTkLabel(
+        parent,  # Contenedor donde se coloca el texto.
+        text="Pantalla de Marcar Archivos",  # Texto que se muestra.
+        font=("Arial", 20, "bold")  # Fuente: Arial, tamaño 20, en negrita.
+    )
+    # Empaqueta (muestra) el título con un margen vertical de 20 píxeles arriba y abajo.
     titulo.pack(pady=20)
 
 
-    # Esta es la lista que guarda las rutas completas de los archivos seleccionados.
+    # ---------------------- LISTA DE ARCHIVOS SELECCIONADOS ----------------------
+    # Lista en memoria donde se guardan las rutas completas de los archivos que el usuario elija.
     lista_archivos = []
 
+    # Crea un marco (frame) con fondo blanco para contener la lista de archivos.
+    lista_frame = ctk.CTkFrame(
+        parent,  # Contenedor principal.
+        fg_color="white"  # Color de fondo del marco.
+    )
+    lista_frame.pack(pady=10)  # Muestra el marco con un margen vertical de 10 píxeles.
 
-    # Este es el contenedor para la lista de archivos.
-    lista_frame = ctk.CTkFrame(parent, fg_color="white")
-    lista_frame.pack(pady=10)
-
-
-    # Este es el widget de texto donde se muestran los nombres de archivos.
-    lista_widget = ctk.CTkTextbox(lista_frame, width=500, height=200, fg_color="white", text_color="black")
-    lista_widget.configure(state="disabled")  # Solo lectura inicialmente
+    # Crea un cuadro de texto para mostrar los nombres de los archivos seleccionados.
+    lista_widget = ctk.CTkTextbox(
+        lista_frame,  # Lo coloca dentro del marco "lista_frame".
+        width=500,  # Ancho de 500 píxeles.
+        height=200,  # Alto de 200 píxeles.
+        fg_color="white",   # Fondo blanco.
+        text_color="black"  # Texto negro.
+    )
+    # Lo deja en modo "solo lectura" para que el usuario no escriba directamente aquí.
+    lista_widget.configure(state="disabled")
+    # Muestra el cuadro de texto en pantalla.
     lista_widget.pack()
 
 
-    # Etiqueta para mostrar mensajes temporales (errores, confirmaciones)
-    mensaje_label = ctk.CTkLabel(parent, text="", font=("Arial", 14, "bold"))
+    # ---------------------- ETIQUETA DE MENSAJES ----------------------
+    # Crea una etiqueta para mostrar mensajes temporales (advertencias, confirmaciones, errores).
+    mensaje_label = ctk.CTkLabel(
+        parent,  # Contenedor principal.
+        text="",  # Empieza vacío.
+        font=("Arial", 14, "bold")  # Fuente Arial, tamaño 14, en negrita.
+    )
+    # Muestra la etiqueta con un margen superior de 5 píxeles y sin margen inferior.
     mensaje_label.pack(pady=(5, 0))
 
 
 
-    # Esta función sirve para mostrar mensajes temporales.
+    # ---------------------- FUNCIÓN PARA MOSTRAR MENSAJES ----------------------
     def mostrar_mensaje(texto, color):
-        mensaje_label.configure(text=texto, text_color=color)  # Cambia el texto y color
-        parent.after(2500, lambda: mensaje_label.configure(text=""))  # Borra el mensaje tras 2.5s
+        """
+        Muestra un mensaje en "mensaje_label" con un color específico y lo borra después de 2,5 segundos.
+        """
+        # Cambia el texto y el color de la etiqueta.
+        mensaje_label.configure(text=texto, text_color=color)  
+        # Usa "after" para ejecutar una función después de 2500 ms (2,5 segundos).
+        # Aquí se usa para vaciar el texto después del tiempo.
+        parent.after(2500, lambda: mensaje_label.configure(text=""))  
 
 
 
-    # Esta función sirve para actualizar la lista de archivos en el widget.
+    # ---------------------- FUNCIÓN PARA ACTUALIZAR LISTA ----------------------
     def actualizar_lista():
-        lista_widget.configure(state="normal")  # Esto sirve para habilitar edición temporal.
-        lista_widget.delete("1.0", "end")  # Esto sirve para limpiar contenido previo.
-        for archivo in lista_archivos:
-            lista_widget.insert("end", os.path.basename(archivo) + "\n")  # Esto sirve para insertar solo el nombre del archivo.
-        lista_widget.configure(state="disabled")  # Esto sirve para deshabilitar edición nuevamente.
+        """
+        Refresca el contenido del cuadro de texto con los nombres de los archivos seleccionados.
+        """
+        # Activa la edición temporalmente para poder modificar el contenido.
+        lista_widget.configure(state="normal")  
+        # Borra todo lo que había antes en el cuadro de texto.
+        lista_widget.delete("1.0", "end")  
 
-        # Esto sirve para activar o desactivar el botón de eliminar según haya archivos.
+        # Recorre cada archivo en la lista y muestra solo el nombre (sin ruta).
+        for archivo in lista_archivos:
+            lista_widget.insert("end", os.path.basename(archivo) + "\n")  
+
+        # Vuelve a ponerlo en modo solo lectura.
+        lista_widget.configure(state="disabled")  
+
+        # Si la lista tiene archivos, activa el botón de eliminar; si está vacía, lo desactiva.
         if lista_archivos:
             boton_eliminar.configure(state="normal")
         else:
-            boton_eliminar.configure(state="disabled")
+            boton_eliminar.configure(state="disabled")  
 
 
 
-    # Esta función sirve para agregar archivos a la lista.
+    # ---------------------- FUNCIÓN PARA AGREGAR ARCHIVOS ----------------------
     def agregar_archivos():
+        """
+        Abre un cuadro de diálogo para seleccionar uno o más archivos y agregarlos a la lista.
+        """
+        # Muestra el diálogo de selección de archivos, permitiendo cualquier tipo (*.*).
         seleccionados = filedialog.askopenfilenames(
             title="Seleccionar archivos", 
-            filetypes=[("Todos los archivos", "*.*")]  # Estto permite seleccionar cualquier tipo de archivo.
+            filetypes=[("Todos los archivos", "*.*")]
         )
+
+        # Recorre los archivos seleccionados.
         for archivo in seleccionados:
-            if archivo not in lista_archivos:  # Esto evita archivos duplicados.
+            # Solo los agrega si no están ya en la lista (evita duplicados).
+            if archivo not in lista_archivos:  
                 lista_archivos.append(archivo)
-        actualizar_lista()  # Esto sirve para refrescar la lista visible.
+        # Actualiza la lista mostrada en pantalla.
+        actualizar_lista()  
 
 
 
-    # Esta función sirve para eliminar archivos seleccionados.
+    # ---------------------- FUNCIÓN PARA ELIMINAR ARCHIVOS ----------------------
     def eliminar_archivos():
-        # Esto verifica si hay selección en el widget, sino muestra advertencia.
+        """
+        Elimina de la lista los archivos que el usuario seleccionó en el cuadro de texto.
+        """
+        # Si no hay nada seleccionado en el cuadro de texto, muestra advertencia y sale.
         if not lista_widget.tag_ranges("sel"):
             mostrar_mensaje("⚠ Debes seleccionar al menos un archivo", "yellow")
             return
 
-        # Esto obtiene los nombres de archivos seleccionados.
+        # Obtiene el texto seleccionado y lo separa en líneas (pueden ser varios nombres).
         seleccion = lista_widget.get("sel.first", "sel.last").strip().split("\n")
-        # Esto mapea los nombres seleccionados a sus rutas completas.
+
+        # Busca en la lista completa las rutas que coincidan con esos nombres.
         rutas_a_eliminar = [ruta for ruta in lista_archivos if os.path.basename(ruta) in seleccion]
+
+        # Recorre y elimina esas rutas de la lista principal.
         for ruta in rutas_a_eliminar:
-            lista_archivos.remove(ruta)  # Esto elimina de la lista interna.
-        actualizar_lista()  # Esto actualiza la lista en pantalla.
+            lista_archivos.remove(ruta)  
+        # Refresca la lista en pantalla.
+        actualizar_lista()  
 
 
 
-    # Estos ya serian los botones de la interfaz.
-    # Este es el botón para seleccionar archivos.
+    # ---------------------- BOTÓN PARA SELECCIONAR ARCHIVOS ----------------------
     boton_seleccionar = ctk.CTkButton(
-        parent, 
-        text="Seleccionar archivos", 
-        command=agregar_archivos,
-        width=280, height=50, font=boton_font
+        parent,  # Contenedor principal.
+        text="Seleccionar archivos",  # Texto que muestra el botón.
+        command=agregar_archivos,  # Función que se ejecuta al hacer clic.
+        width=280,  # Ancho del botón en píxeles.
+        height=50,  # Alto del botón en píxeles.
+        font=boton_font  # Fuente usada para el texto.
     )
-    boton_seleccionar.pack(pady=6)
+    boton_seleccionar.pack(pady=6)  # Muestra el botón con margen vertical de 6 píxeles.
 
 
-    # Este es el botón para eliminar archivos seleccionados.
+
+    # ---------------------- BOTÓN PARA ELIMINAR ARCHIVOS ----------------------
     boton_eliminar = ctk.CTkButton(
-        parent, 
-        text="Eliminar archivos seleccionados", 
-        state="disabled",  # Inicialmente el boton esta deshabilitado.
-        width=280, height=40, font=boton_font, 
-        command=eliminar_archivos
+        parent,  # Contenedor principal.
+        text="Eliminar archivos seleccionados",  # Texto que muestra el botón.
+        state="disabled",  # Comienza deshabilitado hasta que haya archivos en la lista.
+        width=280,  # Ancho del botón en píxeles.
+        height=50,  # Alto del botón en píxeles.
+        font=boton_font,  # Fuente usada para el texto.
+        command=eliminar_archivos  # Función que se ejecuta al hacer clic.
     )
-    boton_eliminar.pack(pady=6)
+    boton_eliminar.pack(pady=6)  # Muestra el botón con margen vertical de 6 píxeles.
 
-    # Esta es la etiqueta que indica dónde escribir la marca.
-    etiqueta_marca = ctk.CTkLabel(parent, text="Texto de la marca:", font=boton_font)
-    etiqueta_marca.pack(pady=(10, 0))
 
-    # Cuadro de texto donde el usuario ingresa la marca
+
+    # ---------------------- ETIQUETA PARA TEXTO DE LA MARCA ----------------------
+    etiqueta_marca = ctk.CTkLabel(
+        parent,  # Contenedor principal.
+        text="Texto de la marca:",  # Texto que muestra el botón.
+        font=boton_font  # Fuente usada para el texto.
+    )
+    etiqueta_marca.pack(pady=(10, 0))  # Muestra con margen superior de 10 píxeles y sin margen inferior.
+
+
+
+    # ---------------------- CAMPO DE TEXTO PARA ENTRADA DE MARCA ----------------------
     entrada_marca = ctk.CTkTextbox(
-        parent, width=350, height=120, fg_color="white", text_color="black", corner_radius=8
+        parent,  # Contenedor principal.
+        width=350,  # Ancho en píxeles.
+        height=120,  # Alto en píxeles.
+        fg_color="white",  # Color de fondo blanco.
+        text_color="black",  # Color del texto negro.
+        corner_radius=8  # Bordes redondeados con radio de 8 píxeles.
     )
-    entrada_marca.pack(pady=(0, 10))
+    entrada_marca.pack(pady=(0, 10))  # Muestra el campo con margen inferior de 10 píxeles.
 
 
-    
-    # Esta función es la que aplica la marca a los archivos seleccionados.
+
+    # ---------------------- FUNCIÓN PARA MARCAR ARCHIVOS ----------------------
     def marcar_archivos_botones():
-        texto_marca = entrada_marca.get("1.0", "end").strip()  # Esto obtiene el contenido del textbox.
-        if not lista_archivos:  # Si no hay archivos, muestra un mensaje.
+        """
+        Aplica la marca escrita en "entrada_marca" a todos los archivos seleccionados.
+        """
+        # Obtiene el texto escrito por el usuario (desde la posición inicial hasta el final) y le quita espacios extra.
+        texto_marca = entrada_marca.get("1.0", "end").strip()  
+
+        # Si no hay archivos en la lista, muestra advertencia y termina.
+        if not lista_archivos:  
             mostrar_mensaje("⚠ No has seleccionado ningún archivo", "yellow")
             return
-        if not texto_marca:  # Si no hay texto, muestra un mensaje.
+        # Si no hay texto para la marca, muestra advertencia y termina.
+        if not texto_marca:  
             mostrar_mensaje("⚠ Ingresa un texto para agregar como marca", "yellow")
             return
-        # Esto recorre cada archivo y aplica la marca.
+
+        # Recorre todos los archivos seleccionados y les aplica la marca.
         for archivo in lista_archivos:
             try:
                 marcar(archivo, texto_marca)
             except Exception as e:
+                # Si ocurre un error, muestra mensaje y termina el proceso.
                 mostrar_mensaje(f"Error con {archivo}: {e}", "red")
                 return
-        mostrar_mensaje("✔ Archivos marcados correctamente", "green")
+
+        # Si todos se marcaron correctamente, muestra confirmación.
+        mostrar_mensaje("✔ Archivos marcados correctamente", "green")  
 
 
-    # Este es el botón que ejecuta el marcado.
+
+    # ---------------------- BOTÓN PARA MARCAR ARCHIVOS ----------------------
     boton_marcar = ctk.CTkButton(
-        parent, text="Marcar archivos", command=marcar_archivos_botones,
-        width=280, height=50, font=boton_font
+        parent,  # Contenedor principal.
+        text="Marcar archivos",  # Texto que muestra el botón.
+        command=marcar_archivos_botones,  # Función que se ejecuta al hacer clic.
+        width=280,  # Ancho en píxeles.
+        height=50,  # Alto en píxeles.
+        font=boton_font  # Fuente usada para el texto.
     )
-    boton_marcar.pack(pady=12)
+    boton_marcar.pack(pady=6)  # Muestra el campo con margen inferior de 10 píxeles.
 
 
-    # Este es el botón para volver al menú principal.
+
+    # ---------------------- BOTÓN PARA VOLVER AL MENÚ PRINCIPAL ----------------------
     boton_volver = ctk.CTkButton(
-        parent, text="Volver al menú principal",
-        command=volver_callback, width=280, height=50, font=boton_font
+        parent,  # Contenedor principal.
+        text="Volver al menú principal",  # Texto que muestra el botón.
+        command=volver_callback,  # Función que se ejecuta al hacer clic.
+        width=280,  # Ancho en píxeles.
+        height=50,  # Alto en píxeles.
+        font=boton_font  # Fuente usada para el texto.
     )
-    boton_volver.pack(pady=12)
+    boton_volver.pack(pady=6)  # Muestra el campo con margen inferior de 10 píxeles.
