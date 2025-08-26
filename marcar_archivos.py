@@ -46,14 +46,14 @@ def mostrar_marcar_archivos(parent, volver_callback, boton_font):
 
 
     # ---------------------- TÍTULO ----------------------
-    # Crea un texto grande en la parte superior que indica el nombre de la pantalla.
+    # Crea una etiqueta (Label) con el título de la pantalla.
     titulo = ctk.CTkLabel(
         parent,  # Contenedor donde se coloca el texto.
-        text="Pantalla de Marcar Archivos",  # Texto que se muestra.
-        font=("Arial", 20, "bold")  # Fuente: Arial, tamaño 20, en negrita.
+        text="Marcar Archivos",  # Texto que se muestra.
+        font=("Arial", 22, "bold")  # Fuente: tamaño 22, negrita ("bold").
     )
     # Empaqueta (muestra) el título con un margen vertical de 20 píxeles arriba y abajo.
-    titulo.pack(pady=20)
+    titulo.pack(pady=12)
 
 
     # ---------------------- LISTA DE ARCHIVOS SELECCIONADOS ----------------------
@@ -61,27 +61,28 @@ def mostrar_marcar_archivos(parent, volver_callback, boton_font):
     lista_archivos = []
 
     # Crea un marco (frame) con fondo blanco para contener la lista de archivos.
-    lista_frame = ctk.CTkFrame(
+    panel_frame = ctk.CTkFrame(
         parent,  # Contenedor principal.
         fg_color="white"  # Color de fondo del marco.
     )
-    lista_frame.pack(pady=10)  # Muestra el marco con un margen vertical de 10 píxeles.
+    panel_frame.pack(pady=10)  # Muestra el marco con un margen vertical de 10 píxeles.
 
     # Crea un cuadro de texto para mostrar los nombres de los archivos seleccionados.
-    lista_widget = ctk.CTkTextbox(
-        lista_frame,  # Lo coloca dentro del marco "lista_frame".
+    panel_widget = ctk.CTkTextbox(
+        panel_frame,  # Lo coloca dentro del marco "panel_frame".
         width=500,  # Ancho de 500 píxeles.
         height=200,  # Alto de 200 píxeles.
-        fg_color="white",   # Fondo blanco.
-        text_color="black"  # Texto negro.
+        fg_color="white",    # Color de fondo (blanco).
+        text_color="black"  # Color del texto (negro).
     )
-    # Lo deja en modo "solo lectura" para que el usuario no escriba directamente aquí.
-    lista_widget.configure(state="disabled")
-    # Muestra el cuadro de texto en pantalla.
-    lista_widget.pack()
+    # Inhabilita la edición del panel para que sea solo lectura inicialmente.
+    panel_widget.configure(state="disabled")
+    # Empaqueta el panel con padding vertical de 8 píxeles.
+    panel_widget.pack(pady=8)
 
 
-    # ---------------------- ETIQUETA DE MENSAJES ----------------------
+
+    # ---------------------- MENSAJES ----------------------
     # Crea una etiqueta para mostrar mensajes temporales (advertencias, confirmaciones, errores).
     mensaje_label = ctk.CTkLabel(
         parent,  # Contenedor principal.
@@ -96,13 +97,14 @@ def mostrar_marcar_archivos(parent, volver_callback, boton_font):
     # ---------------------- FUNCIÓN PARA MOSTRAR MENSAJES ----------------------
     def mostrar_mensaje(texto, color):
         """
-        Muestra un mensaje en "mensaje_label" con un color específico y lo borra después de 2,5 segundos.
+        Muestra un mensaje en "mensaje_label" con un color específico y lo borra después de 3,5 segundos.
         """
+
         # Cambia el texto y el color de la etiqueta.
         mensaje_label.configure(text=texto, text_color=color)  
-        # Usa "after" para ejecutar una función después de 2500 ms (2,5 segundos).
+        # Usa "after" para ejecutar una función después de 3300 ms (3,3 segundos).
         # Aquí se usa para vaciar el texto después del tiempo.
-        parent.after(2500, lambda: mensaje_label.configure(text=""))  
+        parent.after(3300, lambda: mensaje_label.configure(text=""))  
 
 
 
@@ -111,17 +113,17 @@ def mostrar_marcar_archivos(parent, volver_callback, boton_font):
         """
         Refresca el contenido del cuadro de texto con los nombres de los archivos seleccionados.
         """
+
         # Activa la edición temporalmente para poder modificar el contenido.
-        lista_widget.configure(state="normal")  
-        # Borra todo lo que había antes en el cuadro de texto.
-        lista_widget.delete("1.0", "end")  
+        panel_widget.configure(state="normal")  
+        # Borra todo lo que había antes en el panel.
+        panel_widget.delete("1.0", "end")  
 
         # Recorre cada archivo en la lista y muestra solo el nombre (sin ruta).
         for archivo in lista_archivos:
-            lista_widget.insert("end", os.path.basename(archivo) + "\n")  
-
+            panel_widget.insert("end", os.path.basename(archivo) + "\n")  
         # Vuelve a ponerlo en modo solo lectura.
-        lista_widget.configure(state="disabled")  
+        panel_widget.configure(state="disabled")
 
         # Si la lista tiene archivos, activa el botón de eliminar; si está vacía, lo desactiva.
         if lista_archivos:
@@ -132,10 +134,11 @@ def mostrar_marcar_archivos(parent, volver_callback, boton_font):
 
 
     # ---------------------- FUNCIÓN PARA AGREGAR ARCHIVOS ----------------------
-    def agregar_archivos():
+    def seleccionar_archivos():
         """
         Abre un cuadro de diálogo para seleccionar uno o más archivos y agregarlos a la lista.
         """
+
         # Muestra el diálogo de selección de archivos, permitiendo cualquier tipo (*.*).
         seleccionados = filedialog.askopenfilenames(
             title="Seleccionar archivos", 
@@ -157,13 +160,14 @@ def mostrar_marcar_archivos(parent, volver_callback, boton_font):
         """
         Elimina de la lista los archivos que el usuario seleccionó en el cuadro de texto.
         """
+
         # Si no hay nada seleccionado en el cuadro de texto, muestra advertencia y sale.
-        if not lista_widget.tag_ranges("sel"):
+        if not panel_widget.tag_ranges("sel"):
             mostrar_mensaje("⚠ Debes seleccionar al menos un archivo", "yellow")
             return
 
         # Obtiene el texto seleccionado y lo separa en líneas (pueden ser varios nombres).
-        seleccion = lista_widget.get("sel.first", "sel.last").strip().split("\n")
+        seleccion = panel_widget.get("sel.first", "sel.last").strip().split("\n")
 
         # Busca en la lista completa las rutas que coincidan con esos nombres.
         rutas_a_eliminar = [ruta for ruta in lista_archivos if os.path.basename(ruta) in seleccion]
@@ -180,7 +184,7 @@ def mostrar_marcar_archivos(parent, volver_callback, boton_font):
     boton_seleccionar = ctk.CTkButton(
         parent,  # Contenedor principal.
         text="Seleccionar archivos",  # Texto que muestra el botón.
-        command=agregar_archivos,  # Función que se ejecuta al hacer clic.
+        command=seleccionar_archivos,  # Función que se ejecuta al hacer clic.
         width=280,  # Ancho del botón en píxeles.
         height=50,  # Alto del botón en píxeles.
         font=boton_font  # Fuente usada para el texto.
@@ -231,6 +235,7 @@ def mostrar_marcar_archivos(parent, volver_callback, boton_font):
         """
         Aplica la marca escrita en "entrada_marca" a todos los archivos seleccionados.
         """
+        
         # Obtiene el texto escrito por el usuario (desde la posición inicial hasta el final) y le quita espacios extra.
         texto_marca = entrada_marca.get("1.0", "end").strip()  
 

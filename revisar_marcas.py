@@ -17,7 +17,7 @@ DELIM_INI = b"<<CTK_MARK_BEGIN>>"  # Delimitador inicial (en formato bytes).
 DELIM_FIN = b"<<CTK_MARK_END>>"  # Delimitador final (en formato bytes).
 
 # --- Parámetros de lectura ---
-MAX_TAIL = 8192           # Máximo de bytes que se leerán desde el final del archivo (8 KB).
+MAX_TAIL = 8192  # Máximo de bytes que se leerán desde el final del archivo (8 KB).
 MIN_PRINTABLE_RATIO = 0.85  # Porcentaje mínimo de caracteres imprimibles para considerar un texto legible.
 
 
@@ -104,7 +104,7 @@ def extraer_marca_generica(archivo):
 
 
 
-# ---------------------- FUNCIÓN QUE CONSTRUYE LA INTERFAZ PARA REVISAR MARCAS DE ARCHIVOS ----------------------
+# ---------------------- FUNCIÓN PARA MOSTRAR LA PANTALLA DE REVISAR MARCAS ----------------------
 def mostrar_revisar_marcas(parent, volver_callback, boton_font):
     # Elimina todos los widgets actuales del contenedor 'parent'.
     for widget in parent.winfo_children():
@@ -114,7 +114,7 @@ def mostrar_revisar_marcas(parent, volver_callback, boton_font):
     titulo = ctk.CTkLabel(
         parent,  # Contenedor principal.
         text="Revisar Marcas (detección genérica)",  # Texto mostrado.
-        font=("Arial", 20, "bold")  # Fuente Arial, tamaño 20, negrita.
+        font=("Arial", 22, "bold")  # Fuente Arial, tamaño 20, negrita.
     )
     titulo.pack(pady=12)  # Agrega el widget con un margen vertical de 12 píxeles.
 

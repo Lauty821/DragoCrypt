@@ -18,6 +18,12 @@ except Exception as e:
     sys.exit(1)
 
 
+try:
+    from eliminar_marcas import mostrar_eliminar_marcas
+except Exception as e:
+    print("Error al importar revisar_marcas:", e)
+    sys.exit(1)
+
 # Esta es la configuración global.
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("dark-blue")
@@ -79,7 +85,7 @@ def revisar_marcas():
     mostrar_revisar_marcas(scroll_frame, mostrar_menu, BOTON_FONT)
 
 def eliminar_marcas():
-    print("→ Eliminiar marcas invisibles")
+    mostrar_eliminar_marcas(scroll_frame, mostrar_menu, BOTON_FONT)
 
 def registro_usuarios():
     print("→ Registro y control de usuarios")
