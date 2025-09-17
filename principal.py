@@ -1,6 +1,7 @@
 import customtkinter as ctk
 import sys
 from PIL import Image
+from tkinter import ttk
 
 # Acá intentamos importar la pantalla de marcar archivos.
 try:
@@ -21,7 +22,15 @@ except Exception as e:
 try:
     from eliminar_marcas import mostrar_eliminar_marcas
 except Exception as e:
-    print("Error al importar revisar_marcas:", e)
+    print("Error al importar eliminar_marcas:", e)
+    sys.exit(1)
+
+
+
+try:
+    from patreon_drago import mostrar_patreon_drago
+except Exception as e:
+    print("Error al importar eliminar_marcas:", e)
     sys.exit(1)
 
 # Esta es la configuración global.
@@ -87,8 +96,8 @@ def revisar_marcas():
 def eliminar_marcas():
     mostrar_eliminar_marcas(scroll_frame, mostrar_menu, BOTON_FONT)
 
-def registro_usuarios():
-    print("→ Registro y control de usuarios")
+def patreon_drago():
+    mostrar_patreon_drago(scroll_frame, mostrar_menu, BOTON_FONT)
 
 def configuracion():
     print("→ Ajustes del sistema")
@@ -125,8 +134,8 @@ icono_salir = ctk.CTkImage(Image.open(r"C:\Users\LENOVO\Desktop\DragoCrypt\img\s
 botones = [
     ("Marcar archivos", marcar_archivos, icono_marcar),
     ("Revisar marcas", revisar_marcas, icono_revisar),
-    (" Eliminar marcas", eliminar_marcas, icono_eliminar),
-    ("Registro de usuarios", registro_usuarios, icono_registro),
+    ("Eliminar marcas", eliminar_marcas, icono_eliminar),
+    ("Patreon Drago", patreon_drago, icono_registro),
     ("Configuración", configuracion, icono_config),
     ("Salir", salir, icono_salir)
 ]

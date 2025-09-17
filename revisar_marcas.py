@@ -1,278 +1,317 @@
-# Importa la librería CustomTkinter con el alias 'ctk' para crear interfaces gráficas con estilo moderno.
+# ---------------------- IMPORTACIONES ----------------------
+# Importa la biblioteca "customtkinter" para crear interfaces gráficas modernas.
 import customtkinter as ctk
 
-# Importa el módulo 'filedialog' de tkinter para abrir cuadros de diálogo que permiten seleccionar archivos.
+"""
+Importa desde tkinter el módulo "filedialog" que permite abrir cuadros de diálogo
+para seleccionar archivos o carpetas en el sistema operativo.
+"""
 from tkinter import filedialog
 
-# Importa el módulo 'os' para manejar rutas, nombres de archivos y operaciones con el sistema operativo.
+# Importa la biblioteca estándar "os" para trabajar con rutas, nombres de archivos y funciones del sistema operativo.
 import os
 
-# Importa 'string' que contiene utilidades relacionadas con cadenas de texto, como conjuntos de caracteres.
-import string
+
+# Delimitador que indica el inicio de la marca dentro de un archivo.
+DELIM_INI = b"<<CTK_MARK_BEGIN>>"
+# Delimitador que indica el final de la marca dentro de un archivo.
+DELIM_FIN = b"<<CTK_MARK_END>>"
+
+# Tamaño máximo de bytes a leer desde el final de un archivo.
+MAX_TAIL = 8192
+
+# Proporción mínima de caracteres imprimibles (puede usarse para validaciones futuras)
+MIN_PRINTABLE_RATIO = 0.85
 
 
-# --- Configuración opcional de delimitadores para detectar marcas en archivos ---
-# Estos delimitadores sirven para encapsular el texto de una marca dentro de un archivo.
-DELIM_INI = b"<<CTK_MARK_BEGIN>>"  # Delimitador inicial (en formato bytes).
-DELIM_FIN = b"<<CTK_MARK_END>>"  # Delimitador final (en formato bytes).
 
-# --- Parámetros de lectura ---
-MAX_TAIL = 8192  # Máximo de bytes que se leerán desde el final del archivo (8 KB).
-MIN_PRINTABLE_RATIO = 0.85  # Porcentaje mínimo de caracteres imprimibles para considerar un texto legible.
-
-
-
-# ---------------------- FUNCIÓN PARA LEER EL FINAL (TAIL) DE UN ARCHIVO ----------------------
+# ---------------------- FUNCIONES AUXILIARES ----------------------
 def _leer_tail(archivo, max_tail=MAX_TAIL):
-    with open(archivo, "rb") as f:  # Abre el archivo en modo binario de solo lectura.
-        f.seek(0, os.SEEK_END)  # Mueve el puntero al final del archivo.
-        size = f.tell()  # Obtiene el tamaño total del archivo en bytes.
-        if size > max_tail:  # Si el archivo es más grande que max_tail...
-            f.seek(-max_tail, os.SEEK_END)  # Mueve el puntero 'max_tail' bytes antes del final.
+    """
+    Lee los últimos bytes de un archivo hasta un máximo definido por max_tail.
+    - archivo: ruta del archivo a leer.
+    - max_tail: cantidad máxima de bytes a leer desde el final.
+    Retorna: bytes leídos del final del archivo.
+    """
+
+    with open(archivo, "rb") as f:
+        # Mueve el cursor al final del archivo
+        f.seek(0, os.SEEK_END)
+        # Obtiene el tamaño total del archivo
+        size = f.tell()
+
+        if size > max_tail:
+            # Si el archivo es más grande que max_tail, se posiciona max_tail bytes antes del final
+            f.seek(-max_tail, os.SEEK_END)
         else:
-            f.seek(0, os.SEEK_SET)  # Si no, mueve el puntero al inicio del archivo.
-        return f.read()  # Lee y retorna el contenido desde la posición actual.
+            # Si el archivo es más pequeño, se posiciona al inicio
+            f.seek(0, os.SEEK_SET)
+        # Devuelve los bytes leídos
+        return f.read()
 
 
-
-# ---------------------- FUNCIÓN PARA COMPROBAR SI UN TEXTO ES IMPRIMIBLE ----------------------
-def _es_printable_text(s: str) -> bool:
-    if not s:  # Si la cadena está vacía, no es válida.
-        return False
-    imprimibles = sum(ch.isprintable() for ch in s)  # Cuenta cuántos caracteres son imprimibles.
-    return (imprimibles / len(s)) >= MIN_PRINTABLE_RATIO  # Retorna True si la proporción supera el mínimo.
-
-
-
-# ---------------------- FUNCIÓN PARA EXTRAR UNA MARCA USANDO DELIMITADORES ----------------------
 def _extraer_por_delimitadores(datos_tail: bytes):
-    ini = datos_tail.find(DELIM_INI)  # Busca el delimitador inicial en el contenido.
-    if ini == -1:  # Si no se encuentra, retorna None.
-        return None
-    ini += len(DELIM_INI)  # Avanza el índice para saltar el delimitador inicial.
-    fin = datos_tail.find(DELIM_FIN, ini)  # Busca el delimitador final desde la posición 'ini'.
-    if fin == -1:  # Si no se encuentra, retorna None.
-        return None
-    bloque = datos_tail[ini:fin]  # Extrae el bloque de bytes entre los delimitadores.
+    """
+    Busca la marca delimitada dentro de los bytes leídos del final del archivo.
+    - datos_tail: bytes leídos del final del archivo.
+    Retorna: texto de la marca si se encuentra, o None.
+    """
+    if not datos_tail:
+        return None  # Retorna None si no hay datos.
+
+    # Busca el índice de inicio del delimitador.
+    ini = datos_tail.find(DELIM_INI)
+    if ini == -1:
+        return None  # No encontró el inicio.
+    ini += len(DELIM_INI)  # Ajusta el índice al final del delimitador de inicio.
+
+    # Busca el índice del delimitador final.
+    fin = datos_tail.find(DELIM_FIN, ini)
+    if fin == -1:
+        return None  # No encontró el final.
+
+    # Extrae el bloque de bytes que contiene la marca.
+    bloque = datos_tail[ini:fin]
     try:
-        texto = bloque.decode("utf-8", errors="strict").strip()  # Decodifica a UTF-8 y limpia espacios.
-        return texto if texto else None  # Retorna el texto si no está vacío.
-    except UnicodeDecodeError:  # Si hay error de decodificación, retorna None.
-        return None
+        # Intenta decodificarlo como UTF-8 y eliminar espacios al inicio y final.
+        texto = bloque.decode("utf-8", errors="strict").strip()
+        return texto if texto else None  # Retorna texto o None si está vacío.
+    except UnicodeDecodeError:
+        return None  # Retorna None si falla la decodificación.
 
 
-
-# ---------------------- FUNCIÓN PARA EXTRAER UNA MARCA MEDIANTE HEURÍSTICA SI NO HAY DELIMITADORES ----------------------
-def _extraer_por_heuristica(datos_tail: bytes):
-    if not datos_tail:  # Si no hay datos, retorna None.
-        return None
-    texto_tail = datos_tail.decode("utf-8", errors="ignore")  # Decodifica ignorando errores.
-    if not texto_tail:  # Si no hay texto decodificado, retorna None.
-        return None
-    
-    partes = texto_tail.splitlines()  # Divide el texto en líneas.
-    if partes:  # Si hay líneas...
-        candidato = partes[-1].strip()  # Toma la última línea.
-        if not candidato and len(partes) >= 2:  # Si la última está vacía, toma la penúltima.
-            candidato = partes[-2].strip()
-        if candidato and _es_printable_text(candidato):  # Si es texto imprimible...
-            return candidato  # Retorna la línea encontrada.
-
-    # Si no hay líneas claras, intenta extraer caracteres imprimibles desde el final.
-    acumulado = []
-    for ch in reversed(texto_tail):  # Recorre el texto desde el final.
-        if ch.isprintable():  # Si el carácter es imprimible...
-            acumulado.append(ch)  # Lo agrega a la lista acumulada.
-        else:
-            break  # Si encuentra uno no imprimible, se detiene.
-    if acumulado:
-        candidato = "".join(reversed(acumulado)).strip()  # Reconstruye el texto en orden correcto.
-        if candidato and _es_printable_text(candidato):  # Verifica que sea legible.
-            return candidato
-
-    return None  # Si no se encuentra nada, retorna None.
+def extraer_marca_delimitada(archivo):
+    """
+    Función principal para obtener la marca delimitada de un archivo.
+    - archivo: ruta del archivo a revisar.
+    Retorna: texto de la marca o None.
+    """
+    tail = _leer_tail(archivo, MAX_TAIL)  # Lee los últimos bytes del archivo.
+    return _extraer_por_delimitadores(tail)  # Extrae la marca usando los delimitadores.
 
 
-
-# ---------------------- FUNCIÓN PRINCIPAL QUE INTENTA EXTRAER UNA MARCA GENÉRICA DE UN ARCHIVO ----------------------
-def extraer_marca_generica(archivo):
-    tail = _leer_tail(archivo, MAX_TAIL)  # Lee el final del archivo.
-    marca = _extraer_por_delimitadores(tail)  # Intenta extraer por delimitadores.
-    if marca:
-        return marca  # Si la encuentra, la retorna.
-    return _extraer_por_heuristica(tail)  # Si no, intenta por heurística.
-
-
-
-# ---------------------- FUNCIÓN PARA MOSTRAR LA PANTALLA DE REVISAR MARCAS ----------------------
+# ---------------------- FUNCIÓN PARA MOSTRAR LA PANTALLA DE REVISAR ARCHIVOS ----------------------
 def mostrar_revisar_marcas(parent, volver_callback, boton_font):
-    # Elimina todos los widgets actuales del contenedor 'parent'.
+    """
+    Crea y muestra la interfaz gráfica para seleccionar y marcar archivos.
+    - parent: contenedor principal donde se colocarán los elementos gráficos.
+    - volver_callback: función que se ejecutará cuando se presione el botón "Volver".
+    - boton_font: tipo de fuente (familia, tamaño, estilo) que se usará en los botones.
+    """
+
+    # Oculta todos los widgets que ya existían en el contenedor,
     for widget in parent.winfo_children():
         widget.pack_forget()
 
-    # Etiqueta de título
-    titulo = ctk.CTkLabel(
-        parent,  # Contenedor principal.
-        text="Revisar Marcas (detección genérica)",  # Texto mostrado.
-        font=("Arial", 22, "bold")  # Fuente Arial, tamaño 20, negrita.
-    )
-    titulo.pack(pady=12)  # Agrega el widget con un margen vertical de 12 píxeles.
 
-    # Lista que almacenará las rutas de los archivos seleccionados.
+
+    # ---------------------- TÍTULO ----------------------
+    # Crea una etiqueta (Label) con el título de la pantalla.
+    titulo = ctk.CTkLabel(
+        parent,  # Contenedor donde se coloca el texto.
+        text="Revisar Marcas (solo delimitadas)",  # Texto que se muestra.
+        font=("Arial", 22, "bold")  # Fuente: tamaño 22, negrita ("bold").
+    )
+    # Empaqueta (muestra) el título con margen vertical.
+    titulo.pack(pady=12)
+
+
+    # ---------------------- LISTA DE ARCHIVOS SELECCIONADOS ----------------------
+    # Lista en memoria donde se guardan las rutas completas de los archivos que el usuario elija.
     lista_archivos = []
 
-    # Panel donde se mostrarán los archivos y resultados.
-    resultados_widget = ctk.CTkTextbox(
-        parent,
-        width=500,  # Ancho en píxeles.
-        height=300,  # Alto en píxeles.
-        fg_color="white",  # Fondo blanco.
-        text_color="black"  # Texto negro.
-    )
-    resultados_widget.configure(state="disabled")  # Inicialmente deshabilitado.
-    resultados_widget.pack(pady=10)  # Empaquetado con margen vertical de 10 píxeles.
 
-
-
-    # Etiqueta para mensajes temporales.
-    mensaje_label = ctk.CTkLabel(
-        parent,
-        text="",  # Texto inicial vacío.
-        font=("Arial", 13, "bold")  # Fuente Arial, tamaño 13, negrita.
-    )
-    mensaje_label.pack(pady=(2, 0))  # Margen vertical: 2 píxeles arriba, 0 abajo.
-
-# ---------------------- FUNCIÓN PARA MOSTRAR MENSAJES TEMPORALES EN 'mensaje_label' ----------------------
-    def mostrar_mensaje(texto, color):
-        mensaje_label.configure(text=texto, text_color=color)  # Configura texto y color.
-        parent.after(2500, lambda: mensaje_label.configure(text=""))  # Borra el texto tras 2.5 segundos.
-
-
-
-# ---------------------- FUNCIÓN QUE ACTUALIZA EL PANEL CON LA LISTA DE ARCHIVOS ACTUALES ----------------------
-    # Actualiza el panel con la lista de archivos actuales.
-    def actualizar_panel_lista():
-        resultados_widget.configure(state="normal")      # Habilita el texto.
-        resultados_widget.delete("1.0", "end")           # Borra el contenido.
-        for ruta in lista_archivos:
-            resultados_widget.insert("end", f"{os.path.basename(ruta)}\n")  # Muestra solo el nombre del archivo.
-        resultados_widget.configure(state="disabled")    # Vuelve a deshabilitar.
-
-
-
-# ---------------------- FUNCIÓN PARA SELECCIONAR ARCHIVOS MEDIANTE UN CUADRO DE DIÁLOGO ----------------------
-    def seleccionar_archivos():
-        seleccionados = filedialog.askopenfilenames(  # Abre cuadro para elegir varios archivos.
-            title="Seleccionar archivos",
-            filetypes=[("Todos los archivos", "*.*")]
-        )
-        if not seleccionados:  # Si no se selecciona nada, salir.
-            return
-        for ruta in seleccionados:
-            if ruta not in lista_archivos:  # Evita duplicados.
-                lista_archivos.append(ruta)
-
-        # Habilita o deshabilita botones según si hay archivos cargados.
-        boton_eliminar.configure(state="normal" if lista_archivos else "disabled")
-        boton_revisar.configure(state="normal" if lista_archivos else "disabled")
-        actualizar_panel_lista()
-
-
-
-# ---------------------- FUNCIÓN PARA ELIMINAR ARCHIVOS SELECCIONADOS DE LA LISTA ----------------------
-    def eliminar_archivos():
-        if not resultados_widget.tag_ranges("sel"):  # Si no hay selección en el textbox...
-            mostrar_mensaje("⚠ Debes seleccionar al menos un archivo", "yellow")
-            return
-
-        seleccion = resultados_widget.get("sel.first", "sel.last").strip().split("\n")  # Obtiene los nombres seleccionados.
-        rutas_a_eliminar = [ruta for ruta in lista_archivos if os.path.basename(ruta) in seleccion]
-
-        for ruta in rutas_a_eliminar:
-            lista_archivos.remove(ruta)  # Elimina las rutas seleccionadas.
-
-        boton_eliminar.configure(state="normal" if lista_archivos else "disabled")
-        boton_revisar.configure(state="normal" if lista_archivos else "disabled")
-        actualizar_panel_lista()
-
-    # Configura etiquetas de color para el textbox (verde para éxito, rojo para error).
-    resultados_widget.tag_config("exito", foreground="green")
-    resultados_widget.tag_config("error", foreground="red") 
-
-
-
-# ---------------------- FUNCIÓN PARA REVISAR LAS MARCAS DE LOS ARCHIVOS CARGADOS ----------------------
-    def revisar_archivos():
-        if not lista_archivos:  # Si la lista está vacía...
-            mostrar_mensaje("⚠ No has seleccionado ningún archivo", "yellow")
-            return
-
-        resultados_widget.configure(state="normal")
-        resultados_widget.delete("1.0", "end")  # Limpia el panel.
-
-        for ruta in lista_archivos:
-            nombre = os.path.basename(ruta)  # Nombre del archivo sin ruta.
-            try:
-                marca = extraer_marca_generica(ruta)  # Intenta extraer marca.
-            except Exception as e:  # Si hay error al leer...
-                resultados_widget.insert("end", f"❌ {nombre} → Error: {e}\n")
-                continue
-            if marca:
-                resultados_widget.insert("end", f"✅ {nombre} → {marca}\n", "exito")
-            else:
-                resultados_widget.insert("end", f"❌ {nombre} → No se detectó marca este archivo\n", "error")
-        resultados_widget.configure(state="disabled")
-
-
-
-    # Botón para seleccionar archivos.
-    boton_seleccionar = ctk.CTkButton(
-        parent,
-        text="Seleccionar archivos",  # Texto que muestra el botón.
-        command=seleccionar_archivos,  # Función que se ejecuta al hacer clic.
-        width=280,  # Ancho en píxeles
-        height=50,  # Alto en píxeles.
-        font=boton_font  # Fuente usada para el texto.
-    )
-    boton_seleccionar.pack(pady=6)  # Muestra el campo con margen inferior de 10 píxeles.
-
-
-
-    # Botón para eliminar archivos seleccionados.
-    boton_eliminar = ctk.CTkButton(
+    # Crea un panel (frame) con fondo blanco para contener la lista de archivos.
+    panel_widget = ctk.CTkTextbox(
         parent,  # Contenedor principal.
-        text="Eliminar archivos seleccionados",  # Texto que muestra el botón.
-        command=eliminar_archivos,  # Función que se ejecuta al hacer clic.
-        width=280,  # Ancho en píxeles
-        height=50,  # Alto en píxeles.
-        font=boton_font,  # Fuente usada para el texto.
-        state="disabled"  # Inicialmente deshabilitado.
+        width=500,  # Ancho de 500 píxeles.
+        height=200,  # Alto de 200 píxeles.
+        fg_color="white",  # Color de fondo (blanco).
+        text_color="black"  # Color del texto (negro).
     )
-    boton_eliminar.pack(pady=6)  # Muestra el campo con margen inferior de 10 píxeles.
+    # Se deshabilita la edición
+    panel_widget.configure(state="disabled")
+    # Empaqueta el panel con padding vertical de 8 píxeles.
+    panel_widget.pack(pady=8)
 
 
 
-    # Botón para revisar las marcas.
+    # ---------------------- MENSAJES ----------------------
+    # Crea una etiqueta para mostrar mensajes temporales (advertencias, confirmaciones, errores).
+    mensaje_label = ctk.CTkLabel(
+        parent,  # Contenedor principal.
+        text="",  # Empieza vacío.
+        font=("Arial", 14, "bold")  # Fuente Arial, tamaño 14, en negrita.
+    )
+    # Muestra la etiqueta con un margen superior de 5 píxeles y sin margen inferior.
+    mensaje_label.pack(pady=(5, 0))
+
+
+    # ---------------------- FUNCIÓN PARA MOSTRAR MENSAJES ----------------------
+    def mostrar_mensaje(texto, color):
+        """
+        Muestra un mensaje en "mensaje_label" con un color específico y lo borra después de 3,5 segundos.
+        """
+
+        # Cambia el texto y el color de la etiqueta.
+        mensaje_label.configure(text=texto, text_color=color)
+        # Usa "after" para ejecutar una función después de 3.3 segundos.
+        # Aquí se usa para vaciar el texto después del tiempo.
+        parent.after(3300, lambda: mensaje_label.configure(text=""))
+
+
+
+    # ---------------------- FUNCIÓN PARA ACTUALIZAR PANEL ----------------------
+    def actualizar_panel_lista():
+        """
+        Actualiza el contenido del cuadro del panel con los nombres de los archivos en 'lista_archivos'.
+        """
+
+        # Activa la edición temporalmente para poder modificar el contenido.
+        panel_widget.configure(state="normal")  
+        # Borra todo lo que había antes en el panel.
+        panel_widget.delete("1.0", "end")
+
+        # Recorre cada archivo en la lista y muestra solo el nombre (sin ruta).
+        for archivo in lista_archivos:
+            panel_widget.insert("end", os.path.basename(archivo) + "\n")  
+        # Vuelve a ponerlo en modo solo lectura.
+        panel_widget.configure(state="disabled")
+
+
+
+    # ---------------------- FUNCIÓN PARA SELECCIONAR ARCHIVOS ----------------------
+    def seleccionar_archivos():
+        """
+        Abre un cuadro de diálogo para seleccionar uno o varios archivos y los agrega a la lista.
+        """
+        
+        # Muestra el explorador de archivos para elegir múltiples archivos.
+        seleccionados = filedialog.askopenfilenames( 
+        title="Seleccionar archivos",  # Título de la ventana emergente.
+        filetypes=[("Todos los archivos", "*.*")]  # Permite seleccionar cualquier tipo de archivo.
+        )
+
+         # Si el usuario no selecciona nada, la función termina aquí.
+        if not seleccionados:
+            return
+
+        lista_archivos.clear()  # Limpia lista actual.
+        lista_archivos.extend(seleccionados)  # Agrega archivos seleccionados.
+        actualizar_panel_lista()  # Refresca el panel de resultados.
+        # Activa botones según si hay archivos en la lista.
+        boton_quitar.configure(state="normal" if lista_archivos else "disabled")
+        boton_revisar.configure(state="normal" if lista_archivos else "disabled")
+
+    def quitar_archivos():
+        """
+        Quita los archivos seleccionados en el panel.
+        """
+        if not panel_widget.tag_ranges("sel"):
+            mostrar_mensaje("⚠ Debes seleccionar al menos un archivo", "yellow")
+            return  # Si no hay selección, termina.
+
+        # Obtiene los nombres seleccionados en el cuadro de resultados.
+        seleccion = panel_widget.get("sel.first", "sel.last").strip().split("\n")
+        # Filtra rutas de la lista principal que coinciden con los nombres seleccionados.
+        rutas_a_eliminar = [ruta for ruta in lista_archivos if os.path.basename(ruta) in seleccion]
+        for ruta in rutas_a_eliminar:
+            if ruta in lista_archivos:
+                lista_archivos.remove(ruta)
+        actualizar_panel_lista()  # Refresca el panel de resultados.
+        # Activa o desactiva botones según haya archivos en la lista.
+        boton_quitar.configure(state="normal" if lista_archivos else "disabled")
+        boton_revisar.configure(state="normal" if lista_archivos else "disabled")
+
+    # Configura colores de etiquetas dentro del Textbox.
+    panel_widget.tag_config("ok", foreground="green")
+    panel_widget.tag_config("error", foreground="red")
+
+
+
+    # ---------------------- FUNCIÓN PARA REVISAR MARCAS ----------------------
+    def revisar_archivos():
+        """
+        Recorre todos los archivos en 'lista_archivos' y muestra su marca delimitada o error.
+        """
+
+        if not lista_archivos:
+            return  # Si no hay archivos, termina.
+
+        panel_widget.configure(state="normal")  # Habilita edición temporal.
+        panel_widget.delete("1.0", "end")  # Borra contenido previo.
+
+        # Recorre cada archivo
+        for ruta in lista_archivos:
+            nombre = os.path.basename(ruta)  # Obtiene solo el nombre del archivo.
+            try:
+                marca = extraer_marca_delimitada(ruta)  # Intenta extraer la marca.
+            except Exception as e:
+                # Muestra error si falla la extracción.
+                panel_widget.insert("end", f"❌ {nombre} → Error: {e}\n", "error")
+                continue
+
+            # Muestra resultado según haya marca o no
+            if marca:
+                panel_widget.insert("end", "✅ ", "ok")  # Símbolo verde.
+                panel_widget.insert("end", f"{nombre} → {marca}\n")  # Texto de marca.
+            else:
+                panel_widget.insert("end", "❌ ", "error")  # Símbolo rojo.
+                panel_widget.insert("end", f"{nombre} → No se detectó ninguna marca\n")  # Mensaje.
+
+
+
+        # ---------------------- LIMPIEZA AUTOMÁTICA ----------------------
+        def limpieza():
+            """
+            Limpia la lista de archivos y el panel después de revisar.
+            """
+
+            lista_archivos.clear()  # Borra lista de archivos.
+            panel_widget.configure(state="normal")
+            panel_widget.delete("1.0", "end")  # Borra contenido del panel.
+            panel_widget.configure(state="disabled")
+            boton_quitar.configure(state="disabled")
+            boton_revisar.configure(state="disabled")
+
+        parent.after(5500, limpieza)  # Ejecuta limpieza después de 5.5 segundos.
+
+
+
+    # ---------------------- BOTÓN PARA QUITAR ARCHIVOS DEL PANEL ----------------------
+    boton_quitar = ctk.CTkButton(
+        parent,  # Contenedor principal.
+        text="Quitar archivos del panel",  # Texto que muestra el botón.
+        command=quitar_archivos,  # Función que se ejecuta al hacer clic.
+        width=280,  # Ancho del botón en píxeles.
+        height=50,  # Alto del botón en píxeles.
+        font=boton_font,  # Fuente usada para el texto.
+        state="disabled"  # Comienza deshabilitado hasta que haya archivos en la lista.
+    )
+    boton_quitar.pack(pady=6)  # Muestra el botón con margen vertical de 6 píxeles.
+
+
+
+    # ---------------------- BOTÓN PARA REVISAR MARCAS ----------------------
     boton_revisar = ctk.CTkButton(
         parent,  # Contenedor principal.
         text="Revisar marcas",  # Texto que muestra el botón.
         command=revisar_archivos,  # Función que se ejecuta al hacer clic.
-        width=280,  # Ancho en píxeles
-        height=50,  # Alto en píxeles.
+        width=280,  # Ancho del botón en píxeles.
+        height=50,  # Alto del botón en píxeles.
         font=boton_font,  # Fuente usada para el texto.
-        state="disabled"  # Inicialmente deshabilitado.
+        state="disabled"  # Comienza deshabilitado hasta que haya archivos en la lista.
     )
-    boton_revisar.pack(pady=6)  # Muestra el campo con margen inferior de 10 píxeles.
+    boton_revisar.pack(pady=6)  # Muestra el botón con margen vertical de 6 píxeles.
 
 
-
-    # Botón para volver al menú principal.
+    # ---------------------- BOTÓN PARA VOLVER AL MENÚ PRINCIPAL ----------------------
     boton_volver = ctk.CTkButton(
         parent,  # Contenedor principal.
         text="Volver al menú principal",  # Texto que muestra el botón.
         command=volver_callback,  # Función que se ejecuta al hacer clic.
-        width=280,  # Ancho en píxeles
-        height=50,  # Alto en píxeles.
+        width=280,  # Ancho del botón en píxeles.
+        height=50,  # Alto del botón en píxeles.
         font=boton_font  # Fuente usada para el texto.
     )
-    boton_volver.pack(pady=6)  # Muestra el campo con margen inferior de 10 píxeles.
+    boton_volver.pack(pady=6)

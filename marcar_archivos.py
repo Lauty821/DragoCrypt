@@ -2,27 +2,27 @@
 # CustomTkinter es una versión mejorada de Tkinter con soporte para temas, colores y widgets modernos.
 import customtkinter as ctk  
 
-# Importa desde tkinter el módulo "filedialog" para mostrar cuadros de diálogo
-# que permiten seleccionar archivos o carpetas en el sistema operativo.
-from tkinter import filedialog  
+"""
+Importa desde tkinter el módulo "filedialog" para mostrar cuadros de diálogo
+que permiten seleccionar archivos o carpetas en el sistema operativo.
+"""
+from tkinter import filedialog, Listbox, END
 
 # Importa la biblioteca estándar "os" para trabajar con rutas, nombres de archivos, carpetas y funciones del sistema operativo.
 import os  
 
 
+# Delimitadores que encierran la "marca" dentro del archivo
+DELIM_INI = b"<<CTK_MARK_BEGIN>>"
+DELIM_FIN = b"<<CTK_MARK_END>>"
+
+
+
 # ---------------------- FUNCIÓN PARA MARCAR UN ARCHIVO ----------------------
 def marcar(archivo, texto_marca):
-    """
-    Abre un archivo en modo binario y añade al final un texto como "marca".
-    - archivo: ruta completa al archivo que se quiere modificar.
-    - texto_marca: texto que se agregará al final del archivo.
-    """
-
-    # Abre el archivo indicado en modo "ab" (append binario).
-    # Esto significa que no borra lo que ya existe, solo añade al final en formato binario.
-    with open(archivo, "ab") as f:  
-        # Convierte el texto a bytes usando codificación UTF-8 para poder escribirlo en modo binario.
-        f.write(texto_marca.encode("utf-8"))  
+    """Agrega la marca delimitada al final del archivo."""
+    with open(archivo, "ab") as f:
+        f.write(DELIM_INI + texto_marca.encode("utf-8") + DELIM_FIN)
 
 
 
@@ -52,7 +52,7 @@ def mostrar_marcar_archivos(parent, volver_callback, boton_font):
         text="Marcar Archivos",  # Texto que se muestra.
         font=("Arial", 22, "bold")  # Fuente: tamaño 22, negrita ("bold").
     )
-    # Empaqueta (muestra) el título con un margen vertical de 20 píxeles arriba y abajo.
+    # Empaqueta (muestra) el título con margen vertical.
     titulo.pack(pady=12)
 
 
@@ -60,7 +60,7 @@ def mostrar_marcar_archivos(parent, volver_callback, boton_font):
     # Lista en memoria donde se guardan las rutas completas de los archivos que el usuario elija.
     lista_archivos = []
 
-    # Crea un marco (frame) con fondo blanco para contener la lista de archivos.
+    # Crea un panel (frame) con fondo blanco para contener la lista de archivos.
     panel_frame = ctk.CTkFrame(
         parent,  # Contenedor principal.
         fg_color="white"  # Color de fondo del marco.
@@ -72,7 +72,7 @@ def mostrar_marcar_archivos(parent, volver_callback, boton_font):
         panel_frame,  # Lo coloca dentro del marco "panel_frame".
         width=500,  # Ancho de 500 píxeles.
         height=200,  # Alto de 200 píxeles.
-        fg_color="white",    # Color de fondo (blanco).
+        fg_color="white",  # Color de fondo (blanco).
         text_color="black"  # Color del texto (negro).
     )
     # Inhabilita la edición del panel para que sea solo lectura inicialmente.
@@ -93,7 +93,6 @@ def mostrar_marcar_archivos(parent, volver_callback, boton_font):
     mensaje_label.pack(pady=(5, 0))
 
 
-
     # ---------------------- FUNCIÓN PARA MOSTRAR MENSAJES ----------------------
     def mostrar_mensaje(texto, color):
         """
@@ -102,7 +101,7 @@ def mostrar_marcar_archivos(parent, volver_callback, boton_font):
 
         # Cambia el texto y el color de la etiqueta.
         mensaje_label.configure(text=texto, text_color=color)  
-        # Usa "after" para ejecutar una función después de 3300 ms (3,3 segundos).
+        # Usa "after" para ejecutar una función después de 3.3 segundos.
         # Aquí se usa para vaciar el texto después del tiempo.
         parent.after(3300, lambda: mensaje_label.configure(text=""))  
 
@@ -127,36 +126,52 @@ def mostrar_marcar_archivos(parent, volver_callback, boton_font):
 
         # Si la lista tiene archivos, activa el botón de eliminar; si está vacía, lo desactiva.
         if lista_archivos:
-            boton_eliminar.configure(state="normal")
+            boton_quitar.configure(state="normal")
         else:
-            boton_eliminar.configure(state="disabled")  
+            boton_quitar.configure(state="disabled")  
 
 
 
     # ---------------------- FUNCIÓN PARA AGREGAR ARCHIVOS ----------------------
     def seleccionar_archivos():
         """
-        Abre un cuadro de diálogo para seleccionar uno o más archivos y agregarlos a la lista.
+        Abre un cuadro de diálogo para seleccionar uno o varios archivos y los agrega a la lista.
         """
-
-        # Muestra el diálogo de selección de archivos, permitiendo cualquier tipo (*.*).
-        seleccionados = filedialog.askopenfilenames(
-            title="Seleccionar archivos", 
-            filetypes=[("Todos los archivos", "*.*")]
+        
+        # Muestra el explorador de archivos para elegir múltiples archivos.
+        seleccionados = filedialog.askopenfilenames( 
+        title="Seleccionar archivos",  # Título de la ventana emergente.
+        filetypes=[("Todos los archivos", "*.*")]  # Permite seleccionar cualquier tipo de archivo.
         )
 
-        # Recorre los archivos seleccionados.
-        for archivo in seleccionados:
-            # Solo los agrega si no están ya en la lista (evita duplicados).
-            if archivo not in lista_archivos:  
-                lista_archivos.append(archivo)
-        # Actualiza la lista mostrada en pantalla.
-        actualizar_lista()  
+        # Si el usuario no selecciona nada, la función termina aquí.
+        if not seleccionados:
+            return
+
+         # Limpia la lista actual de archivos (borra los anteriores).
+        lista_archivos.clear()
+        # Agrega los archivos recién seleccionados a la lista.
+        lista_archivos.extend(seleccionados)
+        # Refresca el panel para mostrar los nuevos archivos en pantalla.
+        actualizar_lista()
 
 
 
-    # ---------------------- FUNCIÓN PARA ELIMINAR ARCHIVOS ----------------------
-    def eliminar_archivos():
+    # ---------------------- BOTÓN PARA SELECCIONAR ARCHIVOS ----------------------
+    boton_seleccionar = ctk.CTkButton(
+        parent,  # Contenedor principal.
+        text="Seleccionar archivos",  # Texto que muestra el botón.
+        command=seleccionar_archivos,  # Función que se ejecuta al hacer clic.
+        width=280,  # Ancho del botón en píxeles.
+        height=50,  # Alto del botón en píxeles.
+        font=boton_font  # Fuente usada para el texto.
+    )
+    boton_seleccionar.pack(pady=6)  # Muestra el botón con margen vertical de 6 píxeles.
+
+
+
+    # ---------------------- FUNCIÓN PARA QUITAR ARCHIVOS DEL PANEL ----------------------
+    def quitar_archivos():
         """
         Elimina de la lista los archivos que el usuario seleccionó en el cuadro de texto.
         """
@@ -180,30 +195,17 @@ def mostrar_marcar_archivos(parent, volver_callback, boton_font):
 
 
 
-    # ---------------------- BOTÓN PARA SELECCIONAR ARCHIVOS ----------------------
-    boton_seleccionar = ctk.CTkButton(
+    # ---------------------- BOTÓN PARA QUITAR ARCHIVOS DEL PANEL ----------------------
+    boton_quitar = ctk.CTkButton(
         parent,  # Contenedor principal.
-        text="Seleccionar archivos",  # Texto que muestra el botón.
-        command=seleccionar_archivos,  # Función que se ejecuta al hacer clic.
-        width=280,  # Ancho del botón en píxeles.
-        height=50,  # Alto del botón en píxeles.
-        font=boton_font  # Fuente usada para el texto.
-    )
-    boton_seleccionar.pack(pady=6)  # Muestra el botón con margen vertical de 6 píxeles.
-
-
-
-    # ---------------------- BOTÓN PARA ELIMINAR ARCHIVOS ----------------------
-    boton_eliminar = ctk.CTkButton(
-        parent,  # Contenedor principal.
-        text="Eliminar archivos seleccionados",  # Texto que muestra el botón.
+        text="Quitar archivos del panel",  # Texto que muestra el botón.
         state="disabled",  # Comienza deshabilitado hasta que haya archivos en la lista.
         width=280,  # Ancho del botón en píxeles.
         height=50,  # Alto del botón en píxeles.
         font=boton_font,  # Fuente usada para el texto.
-        command=eliminar_archivos  # Función que se ejecuta al hacer clic.
+        command=quitar_archivos  # Función que se ejecuta al hacer clic.
     )
-    boton_eliminar.pack(pady=6)  # Muestra el botón con margen vertical de 6 píxeles.
+    boton_quitar.pack(pady=6)  # Muestra el botón con margen vertical de 6 píxeles.
 
 
 
@@ -245,7 +247,7 @@ def mostrar_marcar_archivos(parent, volver_callback, boton_font):
             return
         # Si no hay texto para la marca, muestra advertencia y termina.
         if not texto_marca:  
-            mostrar_mensaje("⚠ Ingresa un texto para agregar como marca", "yellow")
+            mostrar_mensaje("⚠ Debes ingresar un texto como marca", "yellow")
             return
 
         # Recorre todos los archivos seleccionados y les aplica la marca.
@@ -258,7 +260,11 @@ def mostrar_marcar_archivos(parent, volver_callback, boton_font):
                 return
 
         # Si todos se marcaron correctamente, muestra confirmación.
-        mostrar_mensaje("✔ Archivos marcados correctamente", "green")  
+        mostrar_mensaje("✔ Los archivos se marcaron exitosamente", "green")
+        # Limpiar lista de archivos y panel después de 2.5 segundos
+        parent.after(2500, lambda: (lista_archivos.clear(), actualizar_lista()))
+        # Limpiar campo de texto de marca después de 2.5 segundos
+        parent.after(2500, lambda: entrada_marca.delete("1.0", "end"))
 
 
 

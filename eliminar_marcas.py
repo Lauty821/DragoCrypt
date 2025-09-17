@@ -4,7 +4,7 @@ import customtkinter as ctk
 
 # Importa desde tkinter el módulo "filedialog" para mostrar cuadros de diálogo
 # que permiten seleccionar archivos o carpetas en el sistema operativo.
-from tkinter import filedialog, messagebox
+from tkinter import filedialog
 
 # Importa la biblioteca estándar "os" para trabajar con rutas, nombres de archivos, carpetas y funciones del sistema operativo.
 import os
@@ -70,34 +70,39 @@ def _es_printable_text(s: str) -> bool:
 # ---------------------- FUNCIÓN QUE EXTRAE MARCAS CON DELIMITADORES ---------------------- 
 def _extraer_por_delimitadores(datos_tail: bytes):
     """
-    Intenta extraer una marca delimitada por [DELIM_INI ... DELIM_FIN] dentro de 'datos_tail'.
+    Busca un bloque delimitado por <<CTK_MARK_BEGIN>> y <<CTK_MARK_END>> dentro de 'datos_tail'.
     - datos_tail: bytes leídos desde el final del archivo.
-    Devuelve la marca decodificada (str) si se encuentra y es UTF-8 válido; si no, None.
+    Devuelve el texto de la marca si es UTF-8 válido, de lo contrario None.
     """
-    
-    # Busca la primera ocurrencia del delimitador de inicio en el bloque.
-    ini = datos_tail.find(DELIM_INI)
-    # Si no existe el inicio, no hay bloque delimitado.
 
+    # Busca el delimitador de inicio en los bytes del archivo.
+    ini = datos_tail.find(DELIM_INI)
+    # Si no lo encuentra, no hay marca delimitada → retorna None.
     if ini == -1:
         return None
-    # Avanza el índice para ubicarse justo después del delimitador de inicio.
-    ini += len(DELIM_INI)
-    # Busca el delimitador de fin a partir de 'ini' para cerrar el bloque.
-    fin = datos_tail.find(DELIM_FIN, ini)
 
-    # Si no existe el fin, el bloque está incompleto.
+    # Avanza el índice justo después del delimitador de inicio.
+    ini += len(DELIM_INI)
+
+    # Busca el delimitador de fin, a partir de la posición después del inicio.
+    fin = datos_tail.find(DELIM_FIN, ini)
+    # Si no lo encuentra, la marca está incompleta → retorna None.
     if fin == -1:
         return None
-    # Extrae los bytes comprendidos entre ambos delimitadores (excluyéndolos).
+
+    # Extrae los bytes comprendidos entre ambos delimitadores.
     bloque = datos_tail[ini:fin]
+
     try:
-        # Intenta decodificar el bloque como UTF-8 estrictamente y elimina espacios extremos.
-        texto = bloque.decode("utf-8", errors="strict").strip()
-        # Devuelve el texto si no está vacío; si está vacío, devuelve None.
+        # Intenta decodificar los bytes a texto UTF-8.
+        # NOTA: no usamos .strip() porque si borramos espacios, luego no coincide al eliminar.
+        texto = bloque.decode("utf-8", errors="strict")
+
+        # Si el texto no está vacío, lo devolvemos, si no → None.
         return texto if texto else None
+
     except UnicodeDecodeError:
-        # Si los bytes no son UTF-8 válido, no se considera una marca legible.
+        # Si los bytes no son UTF-8 válido, no se considera una marca.
         return None
 
 
@@ -156,83 +161,68 @@ def _extraer_por_heuristica(datos_tail: bytes):
 # ---------------------- FUNCIÓN QUE EXTRAE MARCAS GENÉRICA ----------------------
 def extraer_marca_generica(archivo):
     """
-    Extrae una marca genérica de 'archivo':
-    - Primero intenta por delimitadores.
-    - Si no hay delimitadores válidos, usa la heurística.
-    Devuelve la marca como str o None si no se detecta.
+    Extrae la marca al final del archivo delimitada por [DELIM_INI ... DELIM_FIN].
+    - archivo: ruta completa del archivo donde se buscará la marca.
+    Retorna la marca como cadena de texto si se encuentra y es UTF-8 válida; si no, None.
     """
 
-    # Lee la sección final del archivo respetando el tope MAX_TAIL.
-    tail = _leer_tail(archivo, MAX_TAIL)
-    # Intenta extraer marcas claramente delimitadas.
-    marca = _extraer_por_delimitadores(tail)
-    # Si hubo éxito con delimitadores, retorna esa marca; si no, cae a la heurística.
-    return marca if marca else _extraer_por_heuristica(tail)
-
-
-
-# ---------------------- FUNCIÓN DE ELIMINACIÓN SEGURA DE MARCAS (modifica el archivo si encuentra marca) ----------------------
-def _borrar_marca(archivo) -> bool:
-    """
-    Intenta borrar la marca del archivo 'archivo' usando dos estrategias:
-      1) Si existen delimitadores [DELIM_INI ... DELIM_FIN], elimina ese bloque completo.
-      2) Si no hay delimitadores, intenta eliminar la cola si coincide con una marca detectada
-         (contemplando variantes con saltos de línea \n y \r\n).
-    Retorna:
-      - True si el archivo fue modificado.
-      - False si no se detectó/quitó ninguna marca.
-    """
-
-    # Abre y lee el archivo completo en memoria como bytes (necesario para manipular cortes).
+    # Abre el archivo en modo binario de solo lectura.
     with open(archivo, "rb") as f:
+        # Lee todos los bytes del archivo y los almacena en 'data'.
         data = f.read()
 
-    # ---------------------- MÉTODO 1: por delimitadores ----------------------
-    # Busca la ÚLTIMA aparición del delimitador de inicio (rfind por si hubiera más de un bloque).
+    # Busca la posición del último delimitador de inicio.
     ini = data.rfind(DELIM_INI)
+    # Si no se encuentra el delimitador de inicio, no hay marca.
+    if ini == -1:
+        return None
+    # Busca la posición del primer delimitador de fin después del inicio.
+    fin = data.find(DELIM_FIN, ini + len(DELIM_INI))
+    # Si no se encuentra el delimitador de fin, la marca está incompleta.
+    if fin == -1:
+        return None
+    try:
+        # Extrae los bytes entre los delimitadores, decodifica como UTF-8 estricto.
+        return data[ini + len(DELIM_INI):fin].decode("utf-8", errors="strict")
+    except UnicodeDecodeError:
+        # Si los bytes no forman un UTF-8 válido, devuelve None.
+        return None
 
-    # Si existe un inicio potencial de bloque...
-    if ini != -1:
-        # Busca el delimitador de fin a partir del final del inicio encontrado.
-        fin = data.find(DELIM_FIN, ini + len(DELIM_INI))
 
-        # Si también existe fin...
-        if fin != -1:
-            # Ajusta 'fin' para incluir el propio delimitador de cierre en el borrado.
-            fin += len(DELIM_FIN)
-            # Construye los nuevos bytes del archivo saltando el bloque [ini:fin].
-            nuevo = data[:ini] + data[fin:]
-            # Reescribe el archivo completo sin el bloque de marca.
-            with open(archivo, "wb") as f:
-                f.write(nuevo)
-            # Indica que se modificó.
-            return True
 
-    # ---------------------- MÉTODO 2: heurística (marca al final) ----------------------
-    # Intenta detectar una marca "legible" (sin delimitadores).
-    marca = extraer_marca_generica(archivo)
+# ---------------------- FUNCIÓN DE ELIMINACIÓN SEGURA DE MARCAS ----------------------
+def _borrar_marca(archivo) -> bool:
+    """
+    Borra la última marca delimitada al final del archivo si existe.
+    - archivo: ruta completa del archivo donde se eliminará la marca.
+    Retorna True si se eliminó algo, False si no había marca detectada.
+    """
 
-    # Si existe una posible marca...
-    if marca:
-        # Codifica la marca a bytes UTF-8 para poder compararla con 'data'.
-        m = marca.encode("utf-8", "ignore")
-        # Prepara variantes de sufijo que podrían estar al final del archivo (Unix \n, Windows \r\n, sin salto).
-        candidatos = [m, b"\n" + m, m + b"\n", b"\r\n" + m, m + b"\r\n"]
-        # Recorre cada posible sufijo...
-        for suf in candidatos:
+    # Abre el archivo en modo binario de solo lectura.
+    with open(archivo, "rb") as f:
+        # Lee todos los bytes del archivo y los almacena en 'data'.
+        data = f.read()
+    # Busca la posición del último delimitador de inicio.
+    ini = data.rfind(DELIM_INI)
+    # Busca la posición del último delimitador de fin.
+    fin = data.rfind(DELIM_FIN)
 
-            # Si el archivo termina exactamente con ese sufijo...
-            if data.endswith(suf):
-                # Calcula el nuevo contenido quitando la longitud del sufijo desde el final.
-                nuevo = data[: len(data) - len(suf)]
-                # Reescribe el archivo sin esa cola que corresponde a la marca.
-                with open(archivo, "wb") as f:
-                    f.write(nuevo)
-                # Indica que se modificó.
-                return True
+    # Verifica si existen ambos delimitadores y que el inicio sea antes del fin.
+    # Si no se cumplen estas condiciones, no hay marca válida para eliminar.
+    if ini == -1 or fin == -1 or ini > fin:
+        return False
+    # Ajusta la posición final para incluir completamente el delimitador de fin.
+    fin += len(DELIM_FIN)
 
-    # Si no se encontró o no se pudo eliminar nada, devuelve False.
-    return False
+    # Crea un nuevo bloque de bytes excluyendo la marca encontrada.
+    nuevo = data[:ini] + data[fin:]
+
+    # Sobrescribe el archivo original con los bytes sin la marca.
+    with open(archivo, "wb") as f:
+        f.write(nuevo)
+    # Retorna True indicando que se eliminó la marca correctamente.
+    return True
+
 
 
 # ---------------------- FUNCIÓN DE LA PANTALLA DE ELIMINAR MARCAS (integrable en principal.py) ----------------------
@@ -251,11 +241,10 @@ def mostrar_eliminar_marcas(parent, volver_callback, boton_font):
 
 
 
-
     # ---------------------- TÍTULO ----------------------
     # Crea una etiqueta (Label) con el título de la pantalla.
     titulo = ctk.CTkLabel(
-        parent,  # Contenedor padre donde se colocará el título.
+        parent,  # Contenedor principal.
         text="Eliminar Marcas",  # Texto visible del título.
         font=("Arial", 22, "bold")  # Fuente: tamaño 22, negrita ("bold").
     )
@@ -345,10 +334,11 @@ def mostrar_eliminar_marcas(parent, volver_callback, boton_font):
         - Detecta marcas en cada archivo seleccionado y llena 'lista_archivos' con (ruta, marca).
         - Muestra advertencia si no se detectó ninguna marca.
         """
+
         # Muestra el diálogo del sistema para seleccionar archivos múltiples.
         rutas = filedialog.askopenfilenames(
             title="⚠ Debes seleccionar al menos un archivo", # Título del diálogo (mensaje al usuario).
-            filetypes=[("Todos los archivos", "*.*")]         # Filtro: permitir cualquier extensión.
+            filetypes=[("Todos los archivos", "*.*")]  # Filtro: permitir cualquier extensión.
         )
         # Si el usuario canceló o no eligió nada, finaliza sin cambios.
         if not rutas:
@@ -372,7 +362,20 @@ def mostrar_eliminar_marcas(parent, volver_callback, boton_font):
         mostrar_lista()
         # Si la lista quedó vacía, informa que no se detectaron marcas en los seleccionados.
         if not lista_archivos:
-            mostrar_mensaje("No se detectaron marcas en los archivos seleccionados.", "yellow")
+            mostrar_mensaje("No se detecto ninguna marca en lo que seleccionaste.", "yellow")
+
+
+
+    # ---------------------- BOTÓN PARA SELECCIONAR ARCHIVOS ----------------------
+    boton_seleccionar = ctk.CTkButton(
+        parent,  # Contenedor principal.
+        text="Seleccionar archivos",  # Texto que muestra el botón.
+        command=seleccionar_archivos,  # Función que se ejecuta al hacer clic.
+        width=280,  # Ancho del botón en píxeles.
+        height=50,  # Alto del botón en píxeles.
+        font=boton_font  # Fuente usada para el texto.
+    )
+    boton_seleccionar.pack(pady=6)  # Muestra el botón con margen vertical de 6 píxeles.
 
 
 
@@ -387,10 +390,6 @@ def mostrar_eliminar_marcas(parent, volver_callback, boton_font):
         # Si no hay elementos en la lista, no hay nada que hacer.
         if not lista_archivos:
             return
-        
-        # Ventana de confirmación (sí/no) para evitar modificaciones accidentales.
-        if not messagebox.askyesno("Confirmar eliminación", "¿Eliminar las marcas de los archivos listados?"):
-            return
 
         # Contador de archivos modificados (informativo; aquí no se muestra, pero es útil si quisieras loguear).
         modificados = 0
@@ -404,8 +403,6 @@ def mostrar_eliminar_marcas(parent, volver_callback, boton_font):
                 # Si algo falla, imprime el error en consola (no rompe la ejecución del resto).
                 print(f"Error al limpiar {ruta}: {e}")
 
-        # Informa al usuario que la operación finalizó correctamente con un cuadro de diálogo informativo.
-        messagebox.showinfo("Operación completada", "La operación se realizó exitosamente.")
         # ---- Reset visual y de estado ----
         # Vacía la lista interna para reflejar que ya no hay pendientes.
         lista_archivos.clear()
@@ -417,19 +414,6 @@ def mostrar_eliminar_marcas(parent, volver_callback, boton_font):
         panel.configure(state="disabled")
         # Deshabilita el botón de eliminar hasta que se vuelvan a seleccionar archivos.
         boton_eliminar.configure(state="disabled")
-
-
-
-    # ---------------------- BOTÓN PARA SELECCIONAR ARCHIVOS ----------------------
-    boton_seleccionar = ctk.CTkButton(
-        parent,  # Contenedor principal.
-        text="Seleccionar archivos",  # Texto que muestra el botón.
-        command=seleccionar_archivos,  # Función que se ejecuta al hacer clic.
-        width=280,  # Ancho del botón en píxeles.
-        height=50,  # Alto del botón en píxeles.
-        font=boton_font  # Fuente usada para el texto.
-    )
-    boton_seleccionar.pack(pady=6)  # Muestra el botón con margen vertical de 6 píxeles.
 
 
 
@@ -456,4 +440,4 @@ def mostrar_eliminar_marcas(parent, volver_callback, boton_font):
         height=50,  # Alto del botón en píxeles.
         font=boton_font,  # Fuente usada para el texto.
     )
-    boton_eliminar.pack(pady=6)  # Muestra el botón con margen vertical de 6 píxeles.
+    boton_volver.pack(pady=6)  # Muestra el botón con margen vertical de 6 píxeles.
